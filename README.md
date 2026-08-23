@@ -17,15 +17,53 @@ proactively suggests seasonal items, substitutes, and restocks.
 - **NLP:** a small rule-based parser (`backend/src/nlp.js`) — no paid API key
   needed, works offline, and is easy to audit/extend.
 
-## Why rule-based NLP instead of a hosted LLM?
+## Architecture: a small multi-agent pipeline
 
-The assignment allows any free-tier AI/ML service, but a regex + keyword
-parser handles this domain (a closed set of shopping intents: add / remove /
-search / quantity) reliably, with zero latency, no API key management, and no
-rate limits — which matters for a live voice demo. It's swappable: `nlp.js`
-exports a single `parseCommand(text) -> { intent, item, quantity }` function,
-so it's a drop-in replacement point for a hosted LLM if broader language
-coverage is needed later.
+Every voice command flows through `backend/src/agents/orchestrator.js`:
+
+```
+voice text
+   │
+   ▼
+Intent Agent (rule-based, instant, free)
+   │  confident?  ──yes──▶ Fulfillment / Search Agent ──▶ response
+   │
+   no
+   ▼
+Clarification Agent (LLM, only called when Intent Agent can't classify)
+   │
+   ▼
+Fulfillment / Search Agent ──▶ response
+```
+
+- **Intent Agent** (`agents/intentAgent.js`) — rule-based classifier, handles
+  the large majority of commands with zero latency and no API dependency.
+- **Clarification Agent** (`agents/clarificationAgent.js`) — LLM fallback
+  (Groq, Llama 3.1 8B) for phrasing the rule-based parser can't confidently
+  classify, e.g. "we're out of coffee" or "get rid of the bread." Only
+  invoked when the Intent Agent returns `unknown`, so the common case never
+  pays for an LLM call. **Fully optional** — with no `GROQ_API_KEY` set, it
+  short-circuits to the same "sorry, I didn't understand" fallback the app
+  always had, so nothing breaks without a key.
+- **Fulfillment Agent** (`agents/fulfillmentAgent.js`) — the only thing that
+  writes to the shopping list.
+- **Suggestion Agent** (`agents/suggestionAgent.js`) — seasonal / substitute /
+  restock reasoning.
+- **Search Agent** (`agents/searchAgent.js`) — product lookup with price
+  filtering.
+
+To enable the Clarification Agent: get a free key at
+[console.groq.com/keys](https://console.groq.com/keys) and set
+`GROQ_API_KEY` in `backend/.env`.
+
+## Why rule-based NLP as the *first* pass instead of an LLM for everything?
+
+This domain is a closed set of intents (add / remove / search / quantity).
+A regex + keyword parser handles it reliably, with zero latency, no API key
+management, and no rate limits — which matters for a live voice demo. The
+Clarification Agent adds LLM coverage exactly where it earns its cost: the
+minority of commands with unusual phrasing the rule-based layer can't
+classify.
 
 ## Running locally
 
@@ -63,6 +101,11 @@ fall back to the typed-command input below the mic.
 - **Voice input:** command recognition via Web Speech API, varied phrasing
   ("add X" / "I need X" / "I want to buy X"), 4-language selector (English,
   Spanish, Hindi, French — recognition language, not translated UI copy).
+- **Voice output:** the assistant speaks its response back
+  (`SpeechSynthesis`) after every command — "Added 2 × apples," "Found 1
+  result," etc. Mute toggle in the header.
+- **Multi-agent command pipeline:** see Architecture above — Intent Agent →
+  (optional) Clarification Agent (LLM) → Fulfillment/Search Agent.
 - **Smart suggestions:** seasonal picks (mocked against current month),
   substitute recommendations per item, "running low" nudges from usage
   history.
@@ -79,17 +122,25 @@ fall back to the typed-command input below the mic.
 ```
 backend/
   src/
-    data/products.js   # mock catalog: categories, price, season, substitutes
-    nlp.js              # rule-based command parser
-    store.js            # in-memory shopping list + purchase history
-    suggestions.js       # seasonal / substitute / restock suggestion engine
-    server.js            # Express routes
+    data/products.js     # mock catalog: categories, price, season, substitutes
+    nlp.js                # rule-based parser used by the Intent Agent
+    store.js              # in-memory shopping list + purchase history
+    suggestions.js         # suggestion logic used by the Suggestion Agent
+    agents/
+      intentAgent.js        # rule-based command classifier (first pass)
+      clarificationAgent.js  # LLM fallback classifier (Groq, optional)
+      fulfillmentAgent.js    # all list writes go through here
+      suggestionAgent.js     # seasonal / substitute / restock reasoning
+      searchAgent.js          # product search + price filtering
+      orchestrator.js          # coordinates the pipeline, called by server.js
+    server.js              # Express routes
 frontend/
   src/
     components/          # VoiceOrb, ShoppingList, Suggestions, SearchPanel, ...
-    useVoice.js           # Web Speech API hook
-    api.js                # backend client
-    App.jsx / App.css     # layout + theme
+    useVoice.js            # Web Speech API (recognition) hook
+    useSpeech.js           # SpeechSynthesis (voice reply) hook
+    api.js                 # backend client
+    App.jsx / App.css      # layout + theme
 ```
 
 ## Notes / trade-offs (given the 8-hour scope)
