@@ -1,66 +1,36 @@
 import express from "express";
 import cors from "cors";
-import { parseCommand } from "./nlp.js";
-import { PRODUCTS, findProduct } from "./data/products.js";
+import { processCommand } from "./agents/orchestrator.js";
+import { search as searchProducts } from "./agents/searchAgent.js";
+import { suggest } from "./agents/suggestionAgent.js";
 import {
   getList,
   addItem,
   removeItem,
   setChecked,
   updateQuantity,
-  getHistory,
 } from "./store.js";
-import { buildSuggestions } from "./suggestions.js";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // --- Voice command pipeline -------------------------------------------------
-// POST { text: "add 2 bottles of water" } -> parses intent, applies it,
-// and returns both the parsed intent (for UI feedback) and the new state.
-app.post("/api/command", (req, res) => {
+// POST { text: "add 2 bottles of water" } -> routed through the agent
+// pipeline (see agents/orchestrator.js): Intent Agent classifies, escalating
+// to the Clarification Agent (LLM) only if unclassified, then the resolved
+// intent is fulfilled. Returns the parsed intent (for UI feedback), which
+// agent handled it, and the new state.
+app.post("/api/command", async (req, res) => {
   const { text } = req.body || {};
   if (!text || typeof text !== "string") {
     return res.status(400).json({ error: "Missing 'text' in request body." });
   }
 
-  const parsed = parseCommand(text);
-  let result = { parsed };
-
-  switch (parsed.intent) {
-    case "add": {
-      if (!parsed.item) return res.status(422).json({ error: "Could not identify an item to add.", parsed });
-      addItem(parsed.item, parsed.quantity);
-      result.list = getList();
-      break;
-    }
-    case "remove": {
-      if (!parsed.item) return res.status(422).json({ error: "Could not identify an item to remove.", parsed });
-      removeItem(parsed.item);
-      result.list = getList();
-      break;
-    }
-    case "search": {
-      result.results = searchProducts(parsed.item, parsed.minPrice, parsed.maxPrice);
-      break;
-    }
-    default:
-      return res.status(422).json({ error: "Sorry, I didn't understand that command.", parsed });
-  }
-
+  const result = await processCommand(text);
+  if (result.error) return res.status(422).json(result);
   res.json(result);
 });
-
-function searchProducts(query, minPrice, maxPrice) {
-  const q = (query || "").toLowerCase();
-  return PRODUCTS.filter((p) => {
-    const matchesText = !q || p.name.includes(q) || q.includes(p.name);
-    const matchesMin = minPrice == null || p.price >= minPrice;
-    const matchesMax = maxPrice == null || p.price <= maxPrice;
-    return matchesText && matchesMin && matchesMax;
-  });
-}
 
 // --- Shopping list CRUD ------------------------------------------------------
 app.get("/api/list", (_req, res) => res.json({ list: getList() }));
@@ -85,7 +55,7 @@ app.patch("/api/list/:id/quantity", (req, res) => {
 
 // --- Suggestions & search -----------------------------------------------------
 app.get("/api/suggestions", (_req, res) => {
-  res.json({ suggestions: buildSuggestions(getList(), getHistory()) });
+  res.json({ suggestions: suggest(getList()) });
 });
 
 app.get("/api/search", (req, res) => {
