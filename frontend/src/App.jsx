@@ -7,12 +7,15 @@ import Suggestions from "./components/Suggestions.jsx";
 import SearchPanel from "./components/SearchPanel.jsx";
 import LanguageSelect from "./components/LanguageSelect.jsx";
 import { useVoice } from "./useVoice.js";
+import { useSpeech } from "./useSpeech.js";
 import { api } from "./api.js";
 import "./App.css";
 
 export default function App() {
   const [lang, setLang] = useState("en-US");
   const { supported, listening, transcript, interim, error: voiceError, start, stop } = useVoice(lang);
+  const { speak, setEnabled, supported: speechSupported } = useSpeech(lang);
+  const [voiceReplyOn, setVoiceReplyOn] = useState(true);
 
   const [list, setList] = useState([]);
   const [entries, setEntries] = useState([]);
@@ -54,24 +57,29 @@ export default function App() {
 
         if (parsed.intent === "add") {
           setList(res.list);
-          logEntry(text, "ok", `Added ${parsed.quantity} × ${parsed.item}`);
+          logEntry(text, "ok", res.message || `Added ${parsed.quantity} × ${parsed.item}`);
+          speak(res.message);
           refreshSuggestions();
         } else if (parsed.intent === "remove") {
           setList(res.list);
-          logEntry(text, "ok", `Removed ${parsed.item}`);
+          logEntry(text, "ok", res.message || `Removed ${parsed.item}`);
+          speak(res.message);
           refreshSuggestions();
         } else if (parsed.intent === "search") {
           setSearchResults(res.results);
           setSearchQuery(parsed.item || text);
-          logEntry(text, "ok", `Found ${res.results.length} result(s)`);
+          logEntry(text, "ok", res.message || `Found ${res.results.length} result(s)`);
+          speak(res.message);
         }
       } catch (e) {
-        logEntry(text, "error", e.message || "Something went wrong");
+        const message = e.message || "Something went wrong";
+        logEntry(text, "error", message);
+        speak("Sorry, I didn't catch that.");
       } finally {
         setCommandPending(false);
       }
     },
-    [refreshSuggestions]
+    [refreshSuggestions, speak]
   );
 
   useEffect(() => {
@@ -116,6 +124,14 @@ export default function App() {
 
   const handleAddFromSuggestion = (name) => runCommand(`add ${name}`);
 
+  const toggleVoiceReply = () => {
+    setVoiceReplyOn((prev) => {
+      const next = !prev;
+      setEnabled(next);
+      return next;
+    });
+  };
+
   return (
     <div className="app">
       <div className="app__glow" aria-hidden />
@@ -125,7 +141,20 @@ export default function App() {
           <span className="brand__mark" />
           <span className="brand__name">Echo</span>
         </div>
-        <LanguageSelect value={lang} onChange={setLang} />
+        <div className="header__controls">
+          {speechSupported && (
+            <button
+              className={`voice-reply-toggle ${voiceReplyOn ? "voice-reply-toggle--on" : ""}`}
+              onClick={toggleVoiceReply}
+              aria-pressed={voiceReplyOn}
+              aria-label={voiceReplyOn ? "Mute voice responses" : "Unmute voice responses"}
+              title={voiceReplyOn ? "Voice replies on" : "Voice replies off"}
+            >
+              {voiceReplyOn ? <SpeakerOnIcon /> : <SpeakerOffIcon />}
+            </button>
+          )}
+          <LanguageSelect value={lang} onChange={setLang} />
+        </div>
       </header>
 
       <main className="hero">
@@ -192,5 +221,24 @@ export default function App() {
 
       <footer className="app__footer">Built for the Voice Command Shopping Assistant assessment.</footer>
     </div>
+  );
+}
+
+function SpeakerOnIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M16.5 8.5a5 5 0 0 1 0 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M19 6a9 9 0 0 1 0 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SpeakerOffIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 9v6h4l5 4V5L8 9H4Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }

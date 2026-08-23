@@ -61,6 +61,29 @@
   font-size: 0.85rem;
 }
 
+.header__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.voice-reply-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-faint);
+  display: grid;
+  place-items: center;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.voice-reply-toggle--on {
+  color: var(--accent-amber);
+  border-color: var(--accent);
+}
+
 /* Hero */
 .hero {
   display: flex;
