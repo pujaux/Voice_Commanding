@@ -21,6 +21,7 @@ export default function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState(null);
   const [banner, setBanner] = useState(null);
+  const [commandPending, setCommandPending] = useState(false);
   const processedRef = useRef("");
 
   const refreshSuggestions = useCallback(async () => {
@@ -46,6 +47,7 @@ export default function App() {
 
   const runCommand = useCallback(
     async (text) => {
+      setCommandPending(true);
       try {
         const res = await api.sendCommand(text);
         const { parsed } = res;
@@ -65,6 +67,8 @@ export default function App() {
         }
       } catch (e) {
         logEntry(text, "error", e.message || "Something went wrong");
+      } finally {
+        setCommandPending(false);
       }
     },
     [refreshSuggestions]
@@ -132,7 +136,13 @@ export default function App() {
 
         <VoiceOrb listening={listening} disabled={!supported} onClick={listening ? stop : start} />
         <p className="hero__hint">
-          {supported ? (listening ? "Listening — try “add two apples”" : "Tap the orb and speak") : "Voice input isn't supported in this browser"}
+          {commandPending
+            ? "Processing…"
+            : supported
+            ? listening
+              ? "Listening — try “add two apples”"
+              : "Tap the orb and speak"
+            : "Voice input isn't supported in this browser"}
         </p>
 
         {banner && (
