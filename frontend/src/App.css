@@ -178,6 +178,36 @@
   color: #ffb2b2;
 }
 
+.text-fallback {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.text-fallback input {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-pill);
+  padding: 10px 16px;
+  font-size: 0.85rem;
+}
+
+.text-fallback button {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent-amber);
+  border-radius: var(--radius-pill);
+  padding: 8px 18px;
+  font-size: 0.85rem;
+}
+
+.text-fallback button:hover {
+  background: var(--accent-soft);
+}
+
 /* Panels */
 .panels {
   display: grid;

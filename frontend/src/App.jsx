@@ -153,6 +153,19 @@ export default function App() {
         )}
 
         <TranscriptFeed interim={listening ? interim : ""} entries={entries} />
+
+        <form
+          className="text-fallback"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const value = e.target.elements.cmd.value.trim();
+            if (value) runCommand(value);
+            e.target.reset();
+          }}
+        >
+          <input name="cmd" type="text" placeholder="…or type a command, e.g. add 2 apples" autoComplete="off" />
+          <button type="submit">Send</button>
+        </form>
       </main>
 
       <section className="panels">
