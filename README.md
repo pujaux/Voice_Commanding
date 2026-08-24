@@ -19,36 +19,79 @@ proactively suggests seasonal items, substitutes, and restocks.
 
 ## Architecture: Multi-Agent Command Pipeline
 
-Echo uses a tiered agent system that prioritizes speed and reliability:
+Echo uses a **tiered multi-agent architecture** designed to prioritize speed, reliability, and graceful degradation.
 
-User speaks: "we're out of coffee"
-│
-▼
-┌─────────────────────┐
-│ Intent Agent │ ← Rule-based NLP (instant, free)
-│ (nlp.js) │
-└─────────────────────┘
-│
-│ Recognized?
-├─yes──┐
-│ └─→ Fulfillment / Search Agent ──→ Response
-│
-no
-│
-▼
-┌─────────────────────┐
-│ Clarification Agent │ ← LLM fallback (Groq, optional)
-│ (Groq API) │
-└─────────────────────┘
-│
-▼
-┌─────────────────────┐
-│ Fulfillment Agent │ ← Execute: add/remove/quantity
-│ Search Agent │ ← Lookup products
-└─────────────────────┘
-│
-▼
-Response + Voice Output
+Simple commands are handled locally using rule-based NLP. The LLM is used only when the user's intent cannot be confidently determined.
+
+```text
+                         ┌──────────────────────┐
+                         │         User         │
+                         │ "we're out of coffee"│
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Orchestrator      │
+                         │  Central Coordinator │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Intent Agent      │
+                         │      nlp.js          │
+                         │ Rule-based NLP       │
+                         └──────────┬───────────┘
+                                    │
+                         ┌──────────┴──────────┐
+                         │                     │
+                    Intent Known          Intent Unknown
+                         │                     │
+                         │                     ▼
+                         │          ┌──────────────────────┐
+                         │          │ Clarification Agent  │
+                         │          │      Groq LLM         │
+                         │          │      (Optional)       │
+                         │          └──────────┬───────────┘
+                         │                     │
+                         │                     ▼
+                         │              Resolved Intent
+                         │                     │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Orchestrator      │
+                         │   Route by Intent    │
+                         └──────────┬───────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     │                             │
+                     ▼                             ▼
+          ┌─────────────────────┐       ┌─────────────────────┐
+          │  Fulfillment Agent  │       │    Search Agent     │
+          │                     │       │                     │
+          │ Add / Remove items  │       │ Product lookup      │
+          │ Update quantities   │       │ Price filtering     │
+          │ Validate mutations  │       │ Product details     │
+          └──────────┬──────────┘       └──────────┬──────────┘
+                     │                             │
+                     └──────────────┬──────────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │   Suggestion Agent   │
+                         │  Optional suggestions│
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       Response       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Voice Output      │
+                         └──────────────────────┘
 
 
 ### Why This Design?
@@ -83,15 +126,31 @@ Response + Voice Output
 ### Agent Breakdown
 
 **Intent Agent** (`agents/intentAgent.js`)
+Input:
+"add 2 apples"
 
-Input: "add 2 apples"
-Output: { intent: "add", item: "apples", quantity: 2 }
+Output:
+{
+  intent: "add",
+  item: "apples",
+  quantity: 2
+}
 
 
 **Clarification Agent** (`agents/clarificationAgent.js`)
 
-Input: "we're out of coffee" (Intent Agent returned "unknown")
-Output: { intent: "add", item: "coffee", quantity: 1 }
+Input:
+"we're out of coffee"
+
+Intent Agent:
+unknown
+
+Output:
+{
+  intent: "add",
+  item: "coffee",
+  quantity: 1
+}
 (via Groq LLM)
 
 
@@ -105,7 +164,28 @@ Proposes: seasonal items, substitutes for your items, frequent buys you forgot
 Filters products by name & price range: "find toothpaste under $5" → 1 result
 
 **Orchestrator** (`agents/orchestrator.js`)
-Coordinates the pipeline: Intent → (Clarification if needed) → Fulfillment/Search
+
+User Input
+    ↓
+Orchestrator
+    ↓
+Intent Agent
+    ↓
+Intent Known? ── Yes ──→ Route
+    │
+    No
+    ↓
+Clarification Agent
+    ↓
+Resolved Intent
+    ↓
+Route
+    ├──→ Fulfillment Agent
+    └──→ Search Agent
+             ↓
+      Suggestion Agent
+             ↓
+          Response
 
 
 
