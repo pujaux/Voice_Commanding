@@ -289,29 +289,67 @@ fall back to the typed-command input below the mic.
 
 ## Project structure
 
+
+
+```text
+voice-shop-assistant/
+│
+├── backend/
+│   ├── src/
+│   │   ├── agents/                    # Multi-agent orchestration layer
+│   │   │   ├── intentAgent.js         # Rule-based command classifier (first-pass NLP)
+│   │   │   ├── clarificationAgent.js  # LLM fallback for ambiguous commands (Groq)
+│   │   │   ├── fulfillmentAgent.js    # Executes add/remove/quantity operations
+│   │   │   ├── suggestionAgent.js     # Seasonal picks, substitutes, restock nudges
+│   │   │   ├── searchAgent.js         # Product lookup with price filtering
+│   │   │   └── orchestrator.js        # Coordinates the agent pipeline
+│   │   │
+│   │   ├── data/
+│   │   │   └── products.js            # Mock catalog (30+ items, categories, pricing)
+│   │   │
+│   │   ├── nlp.js                     # Rule-based intent parser (add/remove/search)
+│   │   ├── store.js                   # In-memory shopping list + usage history
+│   │   ├── suggestions.js             # Suggestion engine (seasonal/substitute/restock)
+│   │   └── server.js                  # Express routes + API endpoints
+│   │
+│   ├── package.json
+│   ├── .env.example
+│   └── .gitignore
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── VoiceOrb.jsx           # Signature pulsing amber mic button
+│   │   │   ├── VoiceOrb.css
+│   │   │   ├── ShoppingList.jsx       # Categorized list with qty controls
+│   │   │   ├── Suggestions.jsx        # Smart suggestion cards
+│   │   │   ├── SearchPanel.jsx        # Voice search results
+│   │   │   └── LanguageSelect.jsx     # 4-language voice recognition selector
+│   │   │
+│   │   ├── useVoice.js                # Web Speech API hook (recognition)
+│   │   ├── useSpeech.js               # SpeechSynthesis hook (voice output)
+│   │   ├── api.js                     # Backend client (fetch wrapper)
+│   │   ├── App.jsx                    # Main app container + state management
+│   │   ├── App.css                    # Dark theme + amber gradient styling
+│   │   ├── index.css                  # Global design tokens
+│   │   └── main.jsx                   # React entry point
+│   │
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── vercel.json
+│   └── .env.example
+│
+├── .gitignore
+├── render.yaml                        # Render deployment config (optional)
+└── README.md
 ```
-backend/
-  src/
-    data/products.js     # mock catalog: categories, price, season, substitutes
-    nlp.js                # rule-based parser used by the Intent Agent
-    store.js              # in-memory shopping list + purchase history
-    suggestions.js         # suggestion logic used by the Suggestion Agent
-    agents/
-      intentAgent.js        # rule-based command classifier (first pass)
-      clarificationAgent.js  # LLM fallback classifier (Groq, optional)
-      fulfillmentAgent.js    # all list writes go through here
-      suggestionAgent.js     # seasonal / substitute / restock reasoning
-      searchAgent.js          # product search + price filtering
-      orchestrator.js          # coordinates the pipeline, called by server.js
-    server.js              # Express routes
-frontend/
-  src/
-    components/          # VoiceOrb, ShoppingList, Suggestions, SearchPanel, ...
-    useVoice.js            # Web Speech API (recognition) hook
-    useSpeech.js           # SpeechSynthesis (voice reply) hook
-    api.js                 # backend client
-    App.jsx / App.css      # layout + theme
-```
+
+
+
+
+              
+
 
 ## Notes / trade-offs (given the 8-hour scope)
 
