@@ -18,12 +18,7 @@ proactively suggests seasonal items, substitutes, and restocks.
   needed, works offline, and is easy to audit/extend.
 
 ## Architecture: Multi-Agent Command Pipeline
-
-Echo uses a **tiered multi-agent architecture** designed to prioritize speed, reliability, and graceful degradation.
-
-Simple commands are handled locally using rule-based NLP. The LLM is used only when the user's intent cannot be confidently determined.
-
-```text
+Echo uses a tiered agent system that prioritizes speed and reliability:
                          ┌──────────────────────┐
                          │         User         │
                          │ "we're out of coffee"│
@@ -94,6 +89,7 @@ Simple commands are handled locally using rule-based NLP. The LLM is used only w
                          └──────────────────────┘
 
 
+
 ### Why This Design?
 
 **Tier 1: Rule-Based Intent Agent**
@@ -126,6 +122,7 @@ Simple commands are handled locally using rule-based NLP. The LLM is used only w
 ### Agent Breakdown
 
 **Intent Agent** (`agents/intentAgent.js`)
+
 Input:
 "add 2 apples"
 
@@ -138,7 +135,6 @@ Output:
 
 
 **Clarification Agent** (`agents/clarificationAgent.js`)
-
 Input:
 "we're out of coffee"
 
@@ -164,6 +160,7 @@ Proposes: seasonal items, substitutes for your items, frequent buys you forgot
 Filters products by name & price range: "find toothpaste under $5" → 1 result
 
 **Orchestrator** (`agents/orchestrator.js`)
+Coordinates all agents and controls the overall command-processing pipeline.
 
 User Input
     ↓
@@ -188,6 +185,7 @@ Route
           Response
 
 
+                                   
 
 
 ## Why rule-based NLP as the *first* pass instead of an LLM for everything?
