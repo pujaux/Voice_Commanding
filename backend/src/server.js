@@ -73,5 +73,4 @@ app.get("/api/search", (req, res) => {
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Voice Shop API listening on :${PORT}`));
+export default app;
