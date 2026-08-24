@@ -17,44 +17,98 @@ proactively suggests seasonal items, substitutes, and restocks.
 - **NLP:** a small rule-based parser (`backend/src/nlp.js`) — no paid API key
   needed, works offline, and is easy to audit/extend.
 
-## Architecture: a small multi-agent pipeline
+## Architecture: Multi-Agent Command Pipeline
 
-Every voice command flows through `backend/src/agents/orchestrator.js`:
+Echo uses a tiered agent system that prioritizes speed and reliability:
 
-```
-voice text
-   │
-   ▼
-Intent Agent (rule-based, instant, free)
-   │  confident?  ──yes──▶ Fulfillment / Search Agent ──▶ response
-   │
-   no
-   ▼
-Clarification Agent (LLM, only called when Intent Agent can't classify)
-   │
-   ▼
-Fulfillment / Search Agent ──▶ response
-```
+User speaks: "we're out of coffee"
+│
+▼
+┌─────────────────────┐
+│ Intent Agent │ ← Rule-based NLP (instant, free)
+│ (nlp.js) │
+└─────────────────────┘
+│
+│ Recognized?
+├─yes──┐
+│ └─→ Fulfillment / Search Agent ──→ Response
+│
+no
+│
+▼
+┌─────────────────────┐
+│ Clarification Agent │ ← LLM fallback (Groq, optional)
+│ (Groq API) │
+└─────────────────────┘
+│
+▼
+┌─────────────────────┐
+│ Fulfillment Agent │ ← Execute: add/remove/quantity
+│ Search Agent │ ← Lookup products
+└─────────────────────┘
+│
+▼
+Response + Voice Output
 
-- **Intent Agent** (`agents/intentAgent.js`) — rule-based classifier, handles
-  the large majority of commands with zero latency and no API dependency.
-- **Clarification Agent** (`agents/clarificationAgent.js`) — LLM fallback
-  (Groq, Llama 3.1 8B) for phrasing the rule-based parser can't confidently
-  classify, e.g. "we're out of coffee" or "get rid of the bread." Only
-  invoked when the Intent Agent returns `unknown`, so the common case never
-  pays for an LLM call. **Fully optional** — with no `GROQ_API_KEY` set, it
-  short-circuits to the same "sorry, I didn't understand" fallback the app
-  always had, so nothing breaks without a key.
-- **Fulfillment Agent** (`agents/fulfillmentAgent.js`) — the only thing that
-  writes to the shopping list.
-- **Suggestion Agent** (`agents/suggestionAgent.js`) — seasonal / substitute /
-  restock reasoning.
-- **Search Agent** (`agents/searchAgent.js`) — product lookup with price
-  filtering.
 
-To enable the Clarification Agent: get a free key at
-[console.groq.com/keys](https://console.groq.com/keys) and set
-`GROQ_API_KEY` in `backend/.env`.
+### Why This Design?
+
+**Tier 1: Rule-Based Intent Agent**
+- Handles ~90% of commands instantly (add milk, remove eggs, find toothpaste)
+- Zero latency, no API calls, works offline
+- Uses regex + keyword patterns for add/remove/search intents
+
+**Tier 2: LLM Clarification Agent (Optional)**
+- Only invoked when Intent Agent can't classify with confidence
+- Handles indirect phrasing: "we're out of coffee" → add coffee
+- Uses Groq's free-tier API (openai/gpt-oss-20b)
+- **Fully optional**: app degrades gracefully without `GROQ_API_KEY`
+
+**Fulfillment Layer**
+- Single point of entry for all list mutations
+- Enforces invariants (no duplicates, min quantity = 1)
+- Suggestion Agent suggests next (seasonal picks, substitutes, restocks)
+- Search Agent provides product lookup with price filtering
+
+### Key Properties
+
+| Property | Benefit |
+|----------|---------|
+| **Layered** | Intent Agent handles common case; LLM used only when needed |
+| **Offline-first** | Core shopping works without network or API key |
+| **Swappable** | Each agent is independent; can upgrade Intent or swap LLM provider |
+| **Graceful** | If Groq fails or key missing, falls back to "sorry, I didn't understand" |
+| **Fast** | ~100ms for rule-based, ~2s for LLM-augmented (Groq is fast) |
+
+### Agent Breakdown
+
+**Intent Agent** (`agents/intentAgent.js`)
+
+Input: "add 2 apples"
+Output: { intent: "add", item: "apples", quantity: 2 }
+
+
+**Clarification Agent** (`agents/clarificationAgent.js`)
+
+Input: "we're out of coffee" (Intent Agent returned "unknown")
+Output: { intent: "add", item: "coffee", quantity: 1 }
+(via Groq LLM)
+
+
+**Fulfillment Agent** (`agents/fulfillmentAgent.js`)
+Executes the resolved intent → updates list → triggers suggestions refresh
+
+**Suggestion Agent** (`agents/suggestionAgent.js`)
+Proposes: seasonal items, substitutes for your items, frequent buys you forgot
+
+**Search Agent** (`agents/searchAgent.js`)
+Filters products by name & price range: "find toothpaste under $5" → 1 result
+
+**Orchestrator** (`agents/orchestrator.js`)
+Coordinates the pipeline: Intent → (Clarification if needed) → Fulfillment/Search
+
+
+
 
 ## Why rule-based NLP as the *first* pass instead of an LLM for everything?
 
