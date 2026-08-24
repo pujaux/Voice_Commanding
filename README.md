@@ -351,11 +351,6 @@ voice-shop-assistant/
               
 
 
-## Notes / trade-offs (given the 8-hour scope)
 
-- Data is in-memory and resets on server restart — fine for a demo, would
-  move to Postgres/SQLite + auth for multi-user production use.
-- "Running low" suggestions are driven by a simple add-count heuristic, not
-  real purchase-date tracking.
 - Multilingual support covers voice **recognition** language; command
   parsing logic itself is currently English-pattern-based.
