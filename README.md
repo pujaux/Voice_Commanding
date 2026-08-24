@@ -189,9 +189,30 @@ Route
           Response
 
 ```
-                                   
+For an ambiguous command:
+```text
+User:
+"we're out of coffee"
 
+        ↓
 
+Orchestrator
+        ↓
+Intent Agent
+        ↓
+Unknown Intent
+        ↓
+Clarification Agent (Groq)
+        ↓
+{ intent: "add", item: "coffee", quantity: 1 }
+        ↓
+Fulfillment Agent
+        ↓
+Shopping List Updated
+        ↓
+Response + Voice Output
+
+```
 ## Why rule-based NLP as the *first* pass instead of an LLM for everything?
 
 This domain is a closed set of intents (add / remove / search / quantity).
