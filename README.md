@@ -16,9 +16,13 @@ proactively suggests seasonal items, substitutes, and restocks.
   to run this in an assessment window).
 - **NLP:** a small rule-based parser (`backend/src/nlp.js`) — no paid API key
   needed, works offline, and is easy to audit/extend.
-
 ## Architecture: Multi-Agent Command Pipeline
-Echo uses a tiered agent system that prioritizes speed and reliability:
+
+Echo uses a **tiered multi-agent architecture** designed to prioritize speed, reliability, and graceful degradation.
+
+Simple commands are handled locally using rule-based NLP. The LLM is used only when the user's intent cannot be confidently determined.
+
+```text
                          ┌──────────────────────┐
                          │         User         │
                          │ "we're out of coffee"│
@@ -87,7 +91,7 @@ Echo uses a tiered agent system that prioritizes speed and reliability:
                          ┌──────────────────────┐
                          │    Voice Output      │
                          └──────────────────────┘
-
+```
 
 
 ### Why This Design?
