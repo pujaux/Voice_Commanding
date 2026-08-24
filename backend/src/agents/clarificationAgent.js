@@ -27,6 +27,7 @@ Use "unknown" if the command isn't a shopping list action. Infer intent from ind
 e.g. "we're out of coffee" -> add coffee. "get rid of the bread" -> remove bread.`;
 
 export async function clarify(text) {
+  console.log("[clarificationAgent] GROQ_API_KEY loaded:", !!process.env.GROQ_API_KEY);
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return { intent: "unknown", agent: "clarification", skipped: "no_api_key" };
 
