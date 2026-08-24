@@ -165,7 +165,7 @@ Filters products by name & price range: "find toothpaste under $5" → 1 result
 
 **Orchestrator** (`agents/orchestrator.js`)
 Coordinates all agents and controls the overall command-processing pipeline.
-
+```text
 User Input
     ↓
 Orchestrator
@@ -188,7 +188,7 @@ Route
              ↓
           Response
 
-
+```
                                    
 
 
