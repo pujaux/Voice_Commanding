@@ -352,5 +352,3 @@ voice-shop-assistant/
 
 
 
-- Multilingual support covers voice **recognition** language; command
-  parsing logic itself is currently English-pattern-based.
