@@ -15,7 +15,7 @@
 // crashing or hanging the request.
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.1-8b-instant";
+const MODEL = "openai/gpt-oss-20b";
 
 const SYSTEM_PROMPT = `You interpret voice shopping-list commands that a simple parser could not classify.
 Respond with ONLY a JSON object, no prose, no markdown fences, matching exactly one of:
