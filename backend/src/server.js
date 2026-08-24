@@ -23,6 +23,10 @@ app.use(express.json());
 // to the Clarification Agent (LLM) only if unclassified, then the resolved
 // intent is fulfilled. Returns the parsed intent (for UI feedback), which
 // agent handled it, and the new state.
+app.get("/", (_req, res) => {
+  res.json({ message: "Echo Voice Shopping Assistant API", status: "running" });
+});
+
 app.post("/api/command", async (req, res) => {
   const { text } = req.body || {};
   if (!text || typeof text !== "string") {
