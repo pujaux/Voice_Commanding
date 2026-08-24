@@ -5,8 +5,21 @@ assessment. Speak naturally ("add milk", "I need bananas", "remove the eggs",
 "find toothpaste under $5") and the app parses intent, updates your list, and
 proactively suggests seasonal items, substitutes, and restocks.
 
-**Live demo:** _add your deployed URL here_
-**Video/GIF:** _optional, add here_
+## Live Demo
+
+- **Frontend:** https://voice-commanding-l4nxthfej-puja-rani-bhuyan-s-projects.vercel.app/
+- **Backend API:** https://voice-commanding-my7y.vercel.app/
+## Demo
+<img width="1827" height="904" alt="image" src="https://github.com/user-attachments/assets/d6945cce-303a-4f1a-ad26-c0bd566f921b" />
+
+
+
+
+https://github.com/user-attachments/assets/fd6a4c20-311b-4b91-b4d9-de19799e535f
+
+
+
+
 
 ## Stack
 
